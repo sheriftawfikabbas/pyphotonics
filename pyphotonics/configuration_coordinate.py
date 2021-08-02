@@ -62,9 +62,23 @@ class ConfigurationCoordinate:
                             coords_are_cartesian=True)
             Poscar(struct).write_file('{0}/POSCAR_{1:03d}'.format(output_dir, int(np.rint(frac*10))))
 
-path = "/mnt/c/MyJava/CMTLab_V3/Work_VII/QuantumEmission/Diamond/VASP/PBE/"
-s_i = path + "diamond_2x2x2_NV-/CONTCAR"
-s_f = path + "diamond_2x2x2_NV-_HOMO_LUMO/CONTCAR"
+# path = "/mnt/c/MyJava/CMTLab_V3/Work_VII/QuantumEmission/Diamond/VASP/PBE/"
+# s_i = path + "diamond_2x2x2_NV-/CONTCAR"
+# s_f = path + "diamond_2x2x2_NV-_HOMO_LUMO/CONTCAR"
 
-cc = ConfigurationCoordinate()
-cc.get_init_fin(s_i,s_f)
+# cc = ConfigurationCoordinate()
+# # cc.get_init_fin(s_i,s_f)
+
+# f = cc.read_poscar(s_f) 
+# i = cc.read_poscar(s_i) 
+
+# i.translate_sites(range(len(i.frac_coords)),[0,0,0.1], frac_coords=False)
+# f.translate_sites(range(len(f.frac_coords)),[0,0,0.1], frac_coords=False)
+
+# f.frac_coords-i.frac_coords
+
+# from ase.geometry import wrap_positions
+# f_w=wrap_positions(f.frac_coords,f.lattice.matrix,pretty_translation=True,center=(0,0,0))
+# i_w=wrap_positions(i.frac_coords,i.lattice.matrix,pretty_translation=True,center=(0,0,0))
+# f_w-i_w
+# f.frac_coords-i.frac_coords

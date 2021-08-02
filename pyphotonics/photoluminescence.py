@@ -4,6 +4,7 @@ from XYZ import XYZ
 import sys
 import matplotlib.pyplot as plt
 import cmath
+from configuration_coordinate import ConfigurationCoordinate
 
 
 class Photoluminescence:
@@ -33,6 +34,7 @@ class Photoluminescence:
                 line = band.readline()
 
                 line = band.readline().replace(",", "")
+
                 parts = line.strip().split()
                 modes[i][a][0] = float(parts[2])
 
@@ -122,26 +124,33 @@ class Photoluminescence:
 
         return A, np.array(I)
 
-    def __init__(self, path, xyz_g, xyz_e, numModes, method, m, resolution):
+    def __init__(self, path, str_g, str_e, numModes, method, m, resolution, shift_vector=[]):
         self.resolution = resolution
         self.numModes = numModes
         self.path = path
         self.m = m
-        self.g = XYZ(xyz_g)
-        self.e = XYZ(xyz_e)
-        self.numAtoms = self.g.N
-        R_g = np.zeros((self.numAtoms, 3))
-        R_e = np.zeros((self.numAtoms, 3))
+
+        if '.xyz' in str_g:
+            self.g = XYZ(str_g).coordinates
+            self.e = XYZ(str_e).coordinates
+        else:
+            cc = ConfigurationCoordinate()
+            self.g = cc.read_poscar(str_g)
+            self.e = cc.read_poscar(str_e)
+
+            self.g.translate_sites(
+                range(len(self.g.frac_coords)), shift_vector, frac_coords=False)
+            self.e.translate_sites(
+                range(len(self.e.frac_coords)), shift_vector, frac_coords=False)
+
+            lg = self.g.lattice
+            le = self.e.lattice
+            self.g = lg.get_cartesian_coords(self.g.frac_coords)
+            self.e = le.get_cartesian_coords(self.e.frac_coords)
+
+        self.numAtoms = len(self.g)
         self.method = method
         self.m = m
-
-        for i in range(self.numAtoms):
-            R_g[i][0] = self.g.x[i]
-            R_g[i][1] = self.g.y[i]
-            R_g[i][2] = self.g.z[i]
-            R_e[i][0] = self.e.x[i]
-            R_e[i][1] = self.e.y[i]
-            R_e[i][2] = self.e.z[i]
 
         if "phonopy" in method:
             r = self.phonopy_read_modes()
@@ -174,6 +183,9 @@ class Photoluminescence:
                 self.frequencies[i] = 0
 
             max_Delta_r = 0
+
+            D_R = self.e - self.g
+
             for a in range(self.numAtoms):
                 # Normalize r:
                 participation = r[i][a][0] * r[i][a][0] + \
@@ -181,8 +193,8 @@ class Photoluminescence:
                 IPR_i += participation**2
 
                 for coord in range(3):
-                    q_i += np.sqrt(m[a]) * (R_e[a][coord] -
-                                            R_g[a][coord]) * r[i][a][coord] * 1e-10
+                    q_i += np.sqrt(m[a]) * (D_R[a][coord]) * \
+                        r[i][a][coord] * 1e-10
                     if np.abs(r[i][a][coord]) > max_Delta_r:
                         max_Delta_r = np.abs(r[i][a][coord])
 
@@ -197,8 +209,8 @@ class Photoluminescence:
 
         for a in range(self.numAtoms):
             for coord in range(3):
-                self.Delta_R += (R_e[a][coord] - R_g[a][coord])**2
-                self.Delta_Q += (R_e[a][coord] - R_g[a][coord])**2 * m[a]
+                self.Delta_R += (D_R[a][coord])**2
+                self.Delta_Q += (D_R[a][coord])**2 * m[a]
 
         self.Delta_R = self.Delta_R**0.5
 
@@ -209,7 +221,6 @@ class Photoluminescence:
         self.omega_set = np.linspace(
             0, self.max_energy, self.max_energy*self.resolution)
         self.S_omega = [self.get_S_omega(o, 6e-3) for o in self.omega_set]
-        
 
     def print_table(self):
         for i in range(self.numModes):
