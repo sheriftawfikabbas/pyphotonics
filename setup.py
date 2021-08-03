@@ -2,7 +2,7 @@ from distutils.core import setup
 setup(
     name='pyphotonics',         # How you named your package folder (MyLib)
     packages=['pyphotonics'],   # Chose the same as "name"
-    version='0.1',      # Start with a small number and increase it with every change you make
+    version='0.1.1',      # Start with a small number and increase it with every change you make
     # Chose a license from here: https://help.github.com/articles/licensing-a-repository
     license='gpl-3.0',
     description='The PyPhotonics python code is a post-processing code written entirely in python which takes as input the output files of the VASP and phonopy codes for a defect system, and calculates the Huang-Rhys factor and the PL lineshapes for that system.',   # Give a short description about your library
