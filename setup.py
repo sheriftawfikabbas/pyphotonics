@@ -10,6 +10,6 @@ setup(
   url = 'https://github.com/sheriftawfikabbas/pyphotonics',   # Provide either the link to your github or to your website
   download_url = 'https://github.com/user/reponame/archive/v_01.tar.gz',    # I explain this later on
   keywords = ['DFT', 'Material science', 'Photoluminescence', 'VASP'],   # Keywords that define your package best
-  install_requires=['scipy','sys','numpy','pandas','matplotlib'],
+  install_requires=['scipy','numpy','pandas','matplotlib'],
 
 )
