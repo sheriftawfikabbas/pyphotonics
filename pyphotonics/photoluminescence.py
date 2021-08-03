@@ -1,10 +1,10 @@
 import numpy as np
 from numpy import fft
-from xyz import XYZ
+from pyphotonics.xyz import XYZ
 import sys
 import matplotlib.pyplot as plt
 import cmath
-from configuration_coordinate import ConfigurationCoordinate
+from pyphotonics.configuration_coordinate import ConfigurationCoordinate
 
 
 class Photoluminescence:
