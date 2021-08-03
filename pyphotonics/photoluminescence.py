@@ -1,6 +1,6 @@
 import numpy as np
 from numpy import fft
-from XYZ import XYZ
+from xyz import XYZ
 import sys
 import matplotlib.pyplot as plt
 import cmath
