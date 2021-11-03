@@ -12,6 +12,9 @@ class Photoluminescence:
     def vasp_read_modes(self):
         return 0
 
+    '''
+    Read the vibrational modes that are calculated by phonopy
+    '''
     def phonopy_read_modes(self):
         modes = np.zeros((self.numModes, self.numAtoms, 3))
 
@@ -50,6 +53,10 @@ class Photoluminescence:
 
         return modes
 
+    '''
+    Read the vibrational frequencies that are calculated by phonopy
+    from the band.yaml file.
+    '''
     def phonopy_read_frequencies(self):
         frequencies = np.zeros(self.numModes)
         try:
@@ -99,13 +106,17 @@ class Photoluminescence:
             f.write(str(self.S_omega[i])+'\n')
         f.close()
 
+    '''
+    The actual photoluminescence line-shape calculation:
+    Calculate the line-shape function after reading the calculated vibrational data
+    '''
     def PL(self, gamma, SHR, EZPL):
-        Gt = []
-        I = []
+        Gt = [] #The Fourier-tranformed G function
+        I = [] #The PL intensity function
 
         r = 1/self.resolution
         St = fft.ifft(self.S_omega)
-        St = fft.ifftshift(St)
+        St = fft.ifftshift(St) #The Fourier-transformed partial HR function
         G = np.exp(2*np.pi*St-SHR)
 
         for i in range(len(G)):
