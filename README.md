@@ -34,7 +34,7 @@ The `pyphotonics` module is composed of the following files:
 
 To calculate the photonics properties of a crystal using pyphotonics, a number of DFT calculations should be performed with VASP first:
 - The ground state structure of the crystal should be optimized. Let's call the output file CONTCAR_GS.
-- The excited state structure of the crystal should be optimized. Let's call the output file CONTCAR_ES. For a tutorial on how to setup such calculation, see: https://questionid.org/question/57e43ee8-40fc-471b-946d-1bed3c2e1ef2
+- The excited state structure of the crystal should be optimized. Let's call the output file CONTCAR_ES. For a tutorial on how to setup such calculation, see this [tutorial](./vasp_constrained_occupations.md)
 - The phonon modes of the ground state system should be calculated with VASP, and the `bands.yaml` file should be produced using the `phonopy` code.
 
 Once all of the above is done, you can calculate the HR factor and PL line-shape as follows (the complete example is in the `test/` directory):
