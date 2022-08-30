@@ -46,6 +46,8 @@ class ConfigurationCoordinate:
         lattice = struct_i.lattice.matrix #[None,:,:]
         delta_R = np.dot(delta_R, lattice)
 
+        # Operate on lattices with orthogonal or nonorthogonal vectors
+
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 

@@ -2,6 +2,11 @@
 
 PyPhotonics is a post-processing python code that calculates photonic properties of materials. Based on the outcome of DFT, constrained DFT and vibrational calculations using DFT performed using VASP for a defect system, PyPhotonics uses the results in the output files and calculates the Huang-Rhys factor of the defect and the photoluminescence line-shape. Soon, the code will calculate the carrier capture coefficient and carrier lifetimes for defects, which are essential quantities for assessing the photovoltaic efficiency of materials.
 
+If you wish to use PyPhotonics, please cite our paper:
+
+- [Sherif AbdulkaderTawfik, Salvy P.Russo, PyPhotonics: A python package for the evaluation of luminescence properties of defects, Computer Physics Communications, 2022, 273, 108222.](https://www.sciencedirect.com/science/article/pii/S0010465521003349)
+
+
 # Installation
 
 You can install PyPhotonics using the pip command: `pip install pyphotonics`. The following python packages are required:
