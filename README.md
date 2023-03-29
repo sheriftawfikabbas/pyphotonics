@@ -52,3 +52,7 @@ p = Photoluminescence(path_phonopy,
 
 ```
 
+# How to setup INCAR for CDFT
+
+Instructions and examples are [here](vasp_constrained_occupations.md).
+
