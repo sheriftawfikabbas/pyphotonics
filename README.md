@@ -15,6 +15,7 @@ You can install PyPhotonics using the pip command: `pip install pyphotonics`. Th
 - numpy
 - pandas
 - matplotlib
+- oganesson
 
 # Directory structure
 
@@ -23,12 +24,8 @@ The `pyphotonics` module is composed of the following files:
 ```
 /pyphotonics
     /__init__.py
-    /configuration_coordinate.py: Contains the class ConfigurationCoordinate which calculates the Huang-Rhys factor and other quantities.
     /constants.py: A list of physical constants.
     /photoluminescence.py: Contains the Photoluminescence class, which drives the photonics calculations.
-    /schrodinger.py: Contains the Schrodinger class which solves the 1-dimensional Schrodinger equation for an arbitrary potential. Will be used in a future version of the code.
-    /xyz.py: Contains the XYZ class which stores coordinate information of the crystals.
-```
 
 # How to use
 
@@ -48,7 +45,7 @@ path = './' #path to the structure files
 p = Photoluminescence(path_phonopy,
                         path + "CONTCAR_GS",
                         path + "CONTCAR_ES",
-                        189, "phonopy", m, 1000, shift_vector=[0.0, 0, 0.1])
+                        189, "phonopy", m, 1000)
 
 ```
 
