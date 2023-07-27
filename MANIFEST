@@ -2,8 +2,5 @@
 setup.cfg
 setup.py
 pyphotonics/__init__.py
-pyphotonics/configuration_coordinate.py
 pyphotonics/constants.py
 pyphotonics/photoluminescence.py
-pyphotonics/schrodinger.py
-pyphotonics/xyz.py
