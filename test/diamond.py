@@ -12,7 +12,7 @@ path_phonopy = "phonopy/"
 p = Photoluminescence(path_phonopy,
                         path + "CONTCAR_GS",
                         path + "CONTCAR_ES",
-                        189, "phonopy", m, 1000, shift_vector=[0.0, 0, 0.1])
+                        189, "phonopy", m, 1000)
 
 
 print("Delta_R=", p.Delta_R)

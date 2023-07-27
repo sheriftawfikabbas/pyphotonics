@@ -1,11 +1,9 @@
 import numpy as np
 from numpy import fft
-from pyphotonics.xyz import XYZ
 import sys
 import matplotlib.pyplot as plt
 import cmath
-from pyphotonics.configuration_coordinate import ConfigurationCoordinate
-
+from oganesson.ogstructure import OgStructure
 
 class Photoluminescence:
 
@@ -135,30 +133,16 @@ class Photoluminescence:
 
         return A, np.array(I)
 
-    def __init__(self, path, str_g, str_e, numModes, method, m, resolution, shift_vector=[]):
+    def __init__(self, path, ground_state, exceited_state, numModes, method, m, resolution):
         self.resolution = resolution
         self.numModes = numModes
         self.path = path
         self.m = m
 
-        if '.xyz' in str_g:
-            self.g = XYZ(str_g).coordinates
-            self.e = XYZ(str_e).coordinates
-        else:
-            cc = ConfigurationCoordinate()
-            self.g = cc.read_poscar(str_g)
-            self.e = cc.read_poscar(str_e)
-
-            self.g.translate_sites(
-                range(len(self.g.frac_coords)), shift_vector, frac_coords=False)
-            self.e.translate_sites(
-                range(len(self.e.frac_coords)), shift_vector, frac_coords=False)
-
-            lg = self.g.lattice
-            le = self.e.lattice
-            self.g = lg.get_cartesian_coords(self.g.frac_coords)
-            self.e = le.get_cartesian_coords(self.e.frac_coords)
-
+        self.g = OgStructure(file_name=ground_state)
+        self.e = OgStructure(file_name=exceited_state)
+        D_R = self.g.get_delta_vector(self.e.structure)
+        
         self.numAtoms = len(self.g)
         self.method = method
         self.m = m
@@ -195,7 +179,7 @@ class Photoluminescence:
 
             max_Delta_r = 0
 
-            D_R = self.e - self.g
+            
 
             for a in range(self.numAtoms):
                 # Normalize r:
