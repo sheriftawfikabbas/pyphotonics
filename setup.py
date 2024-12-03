@@ -10,6 +10,6 @@ setup(
     url='https://github.com/sheriftawfikabbas/pyphotonics',
     keywords=['DFT', 'Material science', 'Photoluminescence',
               'VASP'],
-    install_requires=['scipy', 'numpy', 'pandas', 'matplotlib', 'oganesson'],
+    install_requires=['scipy', 'numpy', 'pandas', 'matplotlib', 'pymatgen'],
 
 )
