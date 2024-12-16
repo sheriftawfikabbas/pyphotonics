@@ -152,7 +152,7 @@ cython_debug/
 #.idea/
 
 test.ipynb
-
+build
 ./*.db
 ./run_*/
 jolt_lab

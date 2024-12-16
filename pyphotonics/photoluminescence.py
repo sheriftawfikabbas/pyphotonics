@@ -2,12 +2,115 @@ import numpy as np
 from numpy import fft
 import sys
 import matplotlib.pyplot as plt
-import cmath
-from pymatgen.util.coord import pbc_shortest_vectors
+from oganesson import OgStructure
 from pymatgen.core import Structure
 
 
 class Photoluminescence:
+    def __init__(
+        self,
+        ground_state,
+        exceited_state,
+        numModes,
+        method,
+        path="./",
+        phonopy_path="./phonopy",
+        m=None,
+        resolution=1000,
+    ):
+        self.resolution = resolution
+        self.numModes = numModes
+        self.path = path
+        self.m = m
+        self.phonopy_path = phonopy_path
+
+        self.g = OgStructure(file_name=path + "/" + ground_state)
+        self.e = Structure.from_file(path + "/" + exceited_state)
+        D_R = self.g.get_delta_vector(self.e)
+        self.g = self.g.structure
+        self.numAtoms = len(self.g)
+        self.method = method
+
+        if m is None:
+            m = np.zeros(len(self.g))
+            for i in range(len(self.g)):
+                m[i] = self.g.species[i].atomic_mass * 1.660539040e-27
+
+        if "phonopy" in method:
+            r = self.phonopy_read_modes()
+            self.frequencies = self.phonopy_read_frequencies()
+        else:
+            r = self.vasp_read_modes()
+            self.frequencies = self.vasp_read_frequencies()
+
+        self.HuangRhyes = 0
+        self.Delta_R = 0
+        self.Delta_Q = 0
+        self.IPR = []
+        self.q = []
+        self.S = []
+
+        for i in range(numModes):
+            q_i = 0
+            IPR_i = 0
+            participation = 0
+            if method == "vasp":
+                self.frequencies[i] = self.frequencies[i] / 1000
+            elif method == "phonopy":
+                self.frequencies[i] = self.frequencies[i] * 0.004135665538536  # THz
+            elif method == "phonopy-siesta":
+                self.frequencies[i] = (
+                    self.frequencies[i] * 0.004135665538536 * 0.727445665
+                )  # THz
+
+            if self.frequencies[i] < 0:
+                self.frequencies[i] = 0
+
+            max_Delta_r = 0
+
+            for a in range(self.numAtoms):
+                # Normalize r:
+                participation = (
+                    r[i][a][0] * r[i][a][0]
+                    + r[i][a][1] * r[i][a][1]
+                    + r[i][a][2] * r[i][a][2]
+                )
+                IPR_i += participation**2
+
+                for coord in range(3):
+                    q_i += np.sqrt(m[a]) * (D_R[a][coord]) * r[i][a][coord] * 1e-10
+                    if np.abs(r[i][a][coord]) > max_Delta_r:
+                        max_Delta_r = np.abs(r[i][a][coord])
+
+            IPR_i = 1.0 / IPR_i
+            S_i = (
+                self.frequencies[i]
+                * q_i**2
+                / 2
+                * 1.0
+                / (1.0545718e-34 * 6.582119514e-16)
+            )
+
+            self.IPR += [IPR_i]
+            self.q += [q_i]
+            self.S += [S_i]
+            self.HuangRhyes += S_i
+
+        for a in range(self.numAtoms):
+            for coord in range(3):
+                self.Delta_R += (D_R[a][coord]) ** 2
+                self.Delta_Q += (D_R[a][coord]) ** 2 * m[a]
+
+        self.Delta_R = self.Delta_R**0.5
+
+        self.Delta_Q = (self.Delta_Q / 1.660539040e-27) ** 0.5
+
+        self.max_energy = 5
+
+        self.omega_set = np.linspace(
+            0, self.max_energy, self.max_energy * self.resolution
+        )
+        self.S_omega = [self.get_S_omega(o, 6e-3) for o in self.omega_set]
 
     def vasp_read_modes(self):
         return 0
@@ -20,7 +123,7 @@ class Photoluminescence:
         modes = np.zeros((self.numModes, self.numAtoms, 3))
 
         try:
-            band = open(self.path + "band.yaml", "r")
+            band = open(self.phonopy_path + "band.yaml", "r")
         except OSError:
             print("Could not open/read file: band.yaml")
             sys.exit()
@@ -62,7 +165,7 @@ class Photoluminescence:
     def phonopy_read_frequencies(self):
         frequencies = np.zeros(self.numModes)
         try:
-            band = open(self.path + "band.yaml", "r")
+            band = open(self.phonopy_path + "band.yaml", "r")
         except OSError:
             print("Could not open/read file: band.yaml")
             sys.exit()
@@ -141,112 +244,6 @@ class Photoluminescence:
             I += [A[i] * ((i) * r) ** 3]
 
         return A, np.array(I)
-
-    def get_delta_vector(self, structure1, structure2):
-        """
-        Gets the difference between the atomic positions of the current structure and `structure`.
-        """
-        lattice = structure1.lattice
-        return np.vstack(
-            [
-                pbc_shortest_vectors(
-                    lattice, structure1.frac_coords[i], structure2.frac_coords[i]
-                )
-                for i in range(len(structure1))
-            ]
-        ).reshape(len(structure1), 3)
-
-    def __init__(
-        self, path, ground_state, exceited_state, numModes, method, m, resolution
-    ):
-        self.resolution = resolution
-        self.numModes = numModes
-        self.path = path
-        self.m = m
-
-        self.g = Structure.from_file(ground_state)
-        self.e = Structure.from_file(exceited_state)
-        D_R = self.get_delta_vector(self.g, self.e)
-
-        self.numAtoms = len(self.g)
-        self.method = method
-        self.m = m
-
-        if "phonopy" in method:
-            r = self.phonopy_read_modes()
-            self.frequencies = self.phonopy_read_frequencies()
-        else:
-            r = self.vasp_read_modes()
-            self.frequencies = self.vasp_read_frequencies()
-
-        self.HuangRhyes = 0
-        self.Delta_R = 0
-        self.Delta_Q = 0
-        self.IPR = []
-        self.q = []
-        self.S = []
-
-        for i in range(numModes):
-            q_i = 0
-            IPR_i = 0
-            participation = 0
-            if method == "vasp":
-                self.frequencies[i] = self.frequencies[i] / 1000
-            elif method == "phonopy":
-                self.frequencies[i] = self.frequencies[i] * 0.004135665538536  # THz
-            elif method == "phonopy-siesta":
-                self.frequencies[i] = (
-                    self.frequencies[i] * 0.004135665538536 * 0.727445665
-                )  # THz
-
-            if self.frequencies[i] < 0:
-                self.frequencies[i] = 0
-
-            max_Delta_r = 0
-
-            for a in range(self.numAtoms):
-                # Normalize r:
-                participation = (
-                    r[i][a][0] * r[i][a][0]
-                    + r[i][a][1] * r[i][a][1]
-                    + r[i][a][2] * r[i][a][2]
-                )
-                IPR_i += participation**2
-
-                for coord in range(3):
-                    q_i += np.sqrt(m[a]) * (D_R[a][coord]) * r[i][a][coord] * 1e-10
-                    if np.abs(r[i][a][coord]) > max_Delta_r:
-                        max_Delta_r = np.abs(r[i][a][coord])
-
-            IPR_i = 1.0 / IPR_i
-            S_i = (
-                self.frequencies[i]
-                * q_i**2
-                / 2
-                * 1.0
-                / (1.0545718e-34 * 6.582119514e-16)
-            )
-
-            self.IPR += [IPR_i]
-            self.q += [q_i]
-            self.S += [S_i]
-            self.HuangRhyes += S_i
-
-        for a in range(self.numAtoms):
-            for coord in range(3):
-                self.Delta_R += (D_R[a][coord]) ** 2
-                self.Delta_Q += (D_R[a][coord]) ** 2 * m[a]
-
-        self.Delta_R = self.Delta_R**0.5
-
-        self.Delta_Q = (self.Delta_Q / 1.660539040e-27) ** 0.5
-
-        self.max_energy = 5
-
-        self.omega_set = np.linspace(
-            0, self.max_energy, self.max_energy * self.resolution
-        )
-        self.S_omega = [self.get_S_omega(o, 6e-3) for o in self.omega_set]
 
     def print_table(self):
         for i in range(self.numModes):
