@@ -7,7 +7,7 @@ VERSION = (here / "pyphotonics" / "VERSION").read_text(encoding="utf-8").strip()
 
 setup(
     name="pyphotonics",
-    packages=["pyphotonics"],
+    packages=["pyphotonics", "carriercapture"],
     entry_points={
         "console_scripts": [
             "pyphotonics=pyphotonics.cli:execute_cli",

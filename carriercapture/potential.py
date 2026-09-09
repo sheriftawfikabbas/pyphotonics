@@ -225,6 +225,37 @@ def pot_from_file(filename: str, resolution: int = 3001) -> Potential:
     return pot
 
 
+def _extremum_index(E: np.ndarray, which: str) -> int:
+    """Index of the (single) minimum/maximum of E.
+
+    Grid points immediately adjacent to the true extremum can tie with it to
+    floating-point precision (e.g. a symmetric potential sampled on a grid
+    that straddles the vertex), so a plain `np.isclose(E, E.min())` mask can
+    contain several *contiguous* indices for what is really one extremum.
+    Only treat this as ambiguous ("several minima/maxima") when the close
+    indices fall into more than one contiguous run.
+    """
+    target = E.min() if which == "min" else E.max()
+    idx = np.where(np.isclose(E, target))[0]
+    if idx.size == 0:
+        idx = np.array([int(np.argmin(E) if which == "min" else np.argmax(E))])
+
+    groups = [[idx[0]]]
+    for i in idx[1:]:
+        if i == groups[-1][-1] + 1:
+            groups[-1].append(i)
+        else:
+            groups.append([i])
+
+    if len(groups) != 1:
+        raise ValueError(f"The fitted potential has several {'minima' if which == 'min' else 'maxima'}.")
+
+    lo, hi = groups[0][0], groups[0][-1]
+    sub = E[lo : hi + 1]
+    offset = int(np.argmin(sub) if which == "min" else np.argmax(sub))
+    return lo + offset
+
+
 def filter_sample_points(pot: Potential, thermal_energy: Optional[float] = None) -> None:
     """Filter QE_data points to the connected 'island' around the minimum below threshold."""
     if thermal_energy is None:
@@ -233,10 +264,7 @@ def filter_sample_points(pot: Potential, thermal_energy: Optional[float] = None)
     Q = pot.Q_data
     E = pot.E_data
 
-    min_inds = np.where(np.isclose(E, E.min()))[0]
-    if min_inds.size != 1:
-        raise ValueError("The fitted potential has several minima.")
-    min_ind = int(min_inds[0])
+    min_ind = _extremum_index(E, "min")
 
     below = E <= (thermal_energy + pot.E0)
 
@@ -317,12 +345,20 @@ def fit_pot(pot: Potential) -> None:
             n_orders = 1
         else:
             n_orders = len(str(poly_order).split())
-        p0 = np.asarray(pot.params.get("p0", np.zeros(3 + n_orders)), dtype=float).reshape(-1)
+        # A=0 or a=0 is a degenerate stationary point of the Morse term (the
+        # term and its gradient both vanish), so curve_fit can get stuck
+        # there if not given a nonzero starting guess.
+        A0 = max(float(Ed.max() - Ed.min()), 1e-3)
+        a0 = 1.0 / max(float(Qd.max() - Qd.min()), 1e-3)
+        default_p0 = np.concatenate([[A0, a0, 0.0], np.zeros(n_orders)])
+        p0 = np.asarray(pot.params.get("p0", default_p0), dtype=float).reshape(-1)
         def model(x, *p):
             coeffs = np.asarray(p, dtype=float)
             return morse_poly(x, coeffs, E0=pot.E0, Q0=pot.Q0, poly_order=poly_order)
     elif pot.func_type == "morse":
-        p0 = np.asarray(pot.params.get("p0", np.zeros(2)), dtype=float).reshape(-1)
+        A0 = max(float(Ed.max() - Ed.min()), 1e-3)
+        a0 = 1.0 / max(float(Qd.max() - Qd.min()), 1e-3)
+        p0 = np.asarray(pot.params.get("p0", [A0, a0]), dtype=float).reshape(-1)
         def model(x, *p):
             coeffs = np.asarray(p, dtype=float)
             return morse(x, coeffs, E0=pot.E0, Q0=pot.Q0)
@@ -419,10 +455,7 @@ def cleave_pot(pot: Potential, *, discard_max: bool = False) -> Tuple[Potential,
     """
     Q = pot.Q_data
     E = pot.E_data
-    max_inds = np.where(np.isclose(E, E.max()))[0]
-    if max_inds.size != 1:
-        raise ValueError("Potential has more than one maximum; cannot cleave unambiguously.")
-    imax = int(max_inds[0])
+    imax = _extremum_index(E, "max")
 
     if discard_max:
         left_idx = np.arange(0, imax)
