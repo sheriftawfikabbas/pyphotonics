@@ -14,6 +14,7 @@ import math
 from typing import Callable, Iterable, List, Sequence, Tuple
 
 import numpy as np
+import scipy.linalg as la
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
@@ -135,8 +136,17 @@ def solve(
         nev = n - 1
 
     try:
-        # symmetric real -> eigsh
-        vals, vecs = spla.eigsh(H, k=nev, which="SA", maxiter=maxiter)
+        if D == 1:
+            # The 1D Hamiltonian is tridiagonal. Direct bisection handles steep
+            # Morse walls without the slow convergence of smallest-value ARPACK.
+            # Use an absolute tolerance: the default scales with the largest
+            # diagonal entry and can obscure the low-energy states entirely.
+            vals, vecs = la.eigh_tridiagonal(
+                H.diagonal(), H.diagonal(1), select="i",
+                select_range=(0, nev - 1), lapack_driver="stebz", tol=1e-12,
+            )
+        else:
+            vals, vecs = spla.eigsh(H, k=nev, which="SA", maxiter=maxiter)
     except Exception as ex:
         raise RuntimeError(f"Eigen-solve failed: {ex}") from ex
 

@@ -87,3 +87,38 @@ Let's have an example. Let's say we have 8 kpoints in both spins, 216 bands, whe
 - `FERWE = 143*1.0 1*0.0 1*1.0 71*0.0 143*1.0 1*0.0 1*1.0 71*0.0 143*1.0 1*0.0 1*1.0 71*0.0 143*1.0 1*0.0 1*1.0 71*0.0 143*1.0 1*0.0 1*1.0 71*0.0 143*1.0 1*0.0 1*1.0 71*0.0 143*1.0 1*0.0 1*1.0 71*0.0 143*1.0 1*0.0 1*1.0 71*0.0`
 - `FERDO = 142*1.0 74*0.0 142*1.0 74*0.0 142*1.0 74*0.0 142*1.0 74*0.0 142*1.0 74*0.0 142*1.0 74*0.0 142*1.0 74*0.0 142*1.0 74*0.0`
 
+
+## Morse potentials: save results and plots
+
+For a worked explanation with energy-level, wavefunction, and overlap plots, open
+[the Morse-potential tutorial notebook](tutorials/morse_potentials.ipynb).
+
+Pass `output_dir` to save the results of `fit_morse_params`:
+
+```bash
+python -c "from carriercapture.param_scan import fit_morse_params; poti, potf = fit_morse_params(a_i=0.5, a_f=0.5, b_i=1.2, b_f=1.2, Q0=0.5, E0=0.3, output_dir='morse_results'); print(poti.eps[:5]); print(potf.eps[:5])"
+```
+
+The output directory is created automatically and contains:
+
+- `potentials.csv`: Q and both potential energies on the full calculation grid.
+- `eigenvalues_initial.csv` and `eigenvalues_final.csv`: zero-based state indices and all calculated eigenvalues, in eV.
+- `morse_results.npz`: full arrays `Q`, `E_i`, `E_f`, `eps_i`, `eps_f`, `chi_i`, and `chi_f`, plus the six input parameters. Each row of `chi_i` or `chi_f` is a wavefunction on Q.
+- `morse_results.png`: the potential wells and the first five eigenvalues for each state.
+
+Q is measured in sqrt(amu) Angstrom. The saved spectrum includes all requested
+grid eigenstates, including states above the Morse dissociation energy.
+The plot focuses on the wells; the CSV and NumPy files retain the entire grid.
+No graphical display is required. Repeated runs with the same output directory
+replace these files. Omit `output_dir` (or use `None`) to return the potentials
+without writing files.
+
+Reload the numerical results with:
+
+```python
+import numpy as np
+
+with np.load("morse_results/morse_results.npz") as results:
+    print(results["eps_i"][:5])
+    print(results["chi_f"].shape)
+```

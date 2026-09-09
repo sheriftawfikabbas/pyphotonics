@@ -11,6 +11,8 @@ import numpy as np
 import pytest
 
 from carriercapture.brooglie import solve as brooglie_solve
+from carriercapture.constants import AMU_EV_C2, HBARC_EV_M
+from carriercapture.param_scan import fit_morse_params
 from carriercapture.potential import (
     Potential,
     harmonic,
@@ -228,3 +230,47 @@ def test_find_crossing_and_transfer_rate():
     assert get_activation_energy(tc) == pytest.approx(0.005, abs=1e-6)
     assert get_transfer_rate(tc) > 0
     assert math.isfinite(get_transfer_rate(tc))
+
+
+def test_fit_morse_params_wide_grid_spectrum_without_output(tmp_path, monkeypatch):
+    # The steep wall on this full-size grid stalled ARPACK. Check the lowest
+    # states against the analytic Morse spectrum and their normalization.
+    monkeypatch.chdir(tmp_path)
+    poti, potf = fit_morse_params(0.5, 0.5, 1.2, 1.2, 0.5, 0.3)
+    factor = (HBARC_EV_M * 1e10) ** 2 / AMU_EV_C2
+    hw = 1.2 * np.sqrt(2 * 0.5 * factor)
+    n = np.arange(5) + 0.5
+    expected = hw * n - hw**2 / (4 * 0.5) * n**2
+    for pot in (poti, potf):
+        np.testing.assert_allclose(pot.eps[:5] - pot.E0, expected, atol=2e-4, rtol=0)
+        assert np.all(np.diff(pot.eps) > 0)
+        dq = np.ptp(pot.Q) / pot.Q.size  # solver's integration convention
+        np.testing.assert_allclose(np.sum(pot.chi**2, axis=1) * dq, 1.0, atol=1e-10)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_fit_morse_params_saves_full_results(tmp_path):
+    output_dir = tmp_path / "nested" / "morse"
+    params = dict(a_i=0.5, a_f=0.5, b_i=1.2, b_f=1.2, Q0=0.5, E0=0.3)
+    poti, potf = fit_morse_params(**params, output_dir=output_dir)
+
+    curves = np.loadtxt(output_dir / "potentials.csv", delimiter=",", skiprows=1)
+    np.testing.assert_array_equal(curves[:, 0], poti.Q)
+    np.testing.assert_array_equal(curves[:, 1], poti.E)
+    np.testing.assert_array_equal(curves[:, 2], potf.E)
+    for state, pot in (("initial", poti), ("final", potf)):
+        levels = np.loadtxt(output_dir / f"eigenvalues_{state}.csv", delimiter=",", skiprows=1)
+        np.testing.assert_array_equal(levels[:, 0], np.arange(pot.nev))
+        np.testing.assert_array_equal(levels[:, 1], pot.eps)
+    with np.load(output_dir / "morse_results.npz", allow_pickle=False) as results:
+        for key, expected in dict(
+            Q=poti.Q, E_i=poti.E, E_f=potf.E, eps_i=poti.eps, eps_f=potf.eps,
+            chi_i=poti.chi, chi_f=potf.chi, **params,
+        ).items():
+            np.testing.assert_array_equal(results[key], expected)
+
+    from matplotlib.image import imread
+
+    plot = imread(output_dir / "morse_results.png")
+    assert plot.shape[0] > 500 and plot.shape[1] > 1000
+    assert np.std(plot[:, :, :3]) > 0.01

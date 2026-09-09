@@ -5,6 +5,14 @@ MANIFEST.in
 README.md
 setup.cfg
 setup.py
+carriercapture/__init__.py
+carriercapture/brooglie.py
+carriercapture/capture_rate.py
+carriercapture/constants.py
+carriercapture/param_scan.py
+carriercapture/plotter.py
+carriercapture/potential.py
+carriercapture/transfer_coord.py
 pyphotonics/VERSION
 pyphotonics/__init__.py
 pyphotonics/__main__.py

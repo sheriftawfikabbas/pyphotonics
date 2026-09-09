@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import Tuple
 
 import numpy as np
@@ -53,8 +54,20 @@ def fit_harmonic_params(hw_i: float, hw_f: float, dQ: float, dE: float) -> Tuple
     return poti, potf
 
 
-def fit_morse_params(a_i: float, a_f: float, b_i: float, b_f: float, Q0: float, E0: float) -> Tuple[Potential, Potential]:
-    """Construct and solve two Morse potentials (excited/relaxed)."""
+def fit_morse_params(
+    a_i: float, a_f: float, b_i: float, b_f: float, Q0: float, E0: float,
+    *, output_dir: str | Path | None = None,
+) -> Tuple[Potential, Potential]:
+    """Construct and solve two Morse potentials (excited/relaxed).
+
+    Set ``output_dir`` to save potential curves and all eigenvalues as CSV,
+    full arrays (including wavefunctions) and input parameters as a compressed
+    NumPy archive, and a PNG of the potentials and first five energy levels.
+    The directory is created if needed; repeated runs replace its result files.
+    With ``output_dir=None`` (the default), no files are written.
+    Returns ``(poti, potf)`` in either case. Energies are in eV and Q is in
+    sqrt(amu) Angstrom.
+    """
     nev_excited = 180
     nev_relaxed = 800
 
@@ -78,7 +91,65 @@ def fit_morse_params(a_i: float, a_f: float, b_i: float, b_f: float, Q0: float, 
     potf.E = potf.func(Q)
     solve_pot(potf)
 
+    if output_dir is not None:
+        _save_morse_results(
+            poti, potf, Path(output_dir),
+            dict(a_i=a_i, a_f=a_f, b_i=b_i, b_f=b_f, Q0=Q0, E0=E0),
+        )
+
     return poti, potf
+
+
+def _save_morse_results(poti: Potential, potf: Potential, output_dir: Path, params: dict) -> None:
+    # Use a noninteractive canvas without changing the caller's pyplot backend.
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    np.savetxt(
+        output_dir / "potentials.csv", np.column_stack((poti.Q, poti.E, potf.E)),
+        delimiter=",", header="Q_sqrt_amu_A,initial_energy_eV,final_energy_eV", comments="",
+    )
+    for state, pot in (("initial", poti), ("final", potf)):
+        np.savetxt(
+            output_dir / f"eigenvalues_{state}.csv",
+            np.column_stack((np.arange(pot.eps.size), pot.eps)),
+            delimiter=",", header="state_index,energy_eV", comments="", fmt=("%d", "%.18e"),
+        )
+    np.savez_compressed(
+        output_dir / "morse_results.npz",
+        Q=poti.Q, E_i=poti.E, E_f=potf.E,
+        eps_i=poti.eps, eps_f=potf.eps, chi_i=poti.chi, chi_f=potf.chi,
+        **params,
+    )
+
+    fig = Figure(figsize=(11, 4.5), layout="constrained")
+    FigureCanvasAgg(fig)
+    ax_pot, ax_levels = fig.subplots(1, 2)
+    for pot, color in ((poti, "tab:blue"), (potf, "tab:orange")):
+        ax_pot.plot(pot.Q, pot.E, color=color, label=pot.name)
+        levels = pot.eps[:5]
+        ax_levels.plot(np.arange(levels.size), levels, "o-", color=color, label=pot.name)
+
+    # Focus on the wells: the full solver grid includes an exponentially high
+    # wall, which would make the low-energy structure invisible with autoscale.
+    width_i = 1.0 / max(abs(params["b_i"]), 1e-12)
+    width_f = 1.0 / max(abs(params["b_f"]), 1e-12)
+    ax_pot.set_xlim(
+        max(poti.Q.min(), min(poti.Q0 - 3 * width_i, potf.Q0 - 3 * width_f)),
+        min(poti.Q.max(), max(poti.Q0 + 3 * width_i, potf.Q0 + 3 * width_f)),
+    )
+    low = min(poti.E0, potf.E0)
+    high = max(poti.E0 + params["a_i"], potf.E0 + params["a_f"])
+    margin = 0.1 * max(high - low, 0.01)
+    ax_pot.set_ylim(low - margin, high + margin)
+    ax_pot.set(title="Morse potentials", xlabel=r"Q ($\sqrt{\mathrm{amu}}$ Å)", ylabel="Energy (eV)")
+    ax_levels.set(title="First five eigenvalues", xlabel="State index (n)", ylabel="Energy (eV)")
+    ax_levels.set_xticks(range(5))
+    for ax in (ax_pot, ax_levels):
+        ax.legend()
+        ax.grid(alpha=0.25)
+    fig.savefig(output_dir / "morse_results.png", dpi=200)
 
 
 def get_harmonic_capture(hw_i: float, hw_f: float, dQ: float, dE: float, W: float, V: float, Tmin: float = 100.0, Tmax: float = 800.0, NT: int = 100):
